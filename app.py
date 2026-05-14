@@ -4,16 +4,16 @@ import requests
 st.set_page_config(page_title="Il Ricettario Magico", page_icon="🍳", layout="centered")
 st.title("🍳 Il Ricettario di Famiglia")
 
-# FUNZIONE DI TRADUZIONE AUTOMATICA (ITALIANO -> INGLESE)
+# FUNZIONE DI TRADUZIONE SEMPLIFICATA (ITALIANO -> INGLESE)
 def traduci_in_inglese(testo):
     try:
         url = f"translated.net{testo}&langpair=it|en"
         risposta = requests.get(url).json()
         return risposta["responseData"]["translatedText"]
     except:
-        return testo  # Se il traduttore fallisce, usa il testo originale
+        return testo
 
-# FUNZIONI CORRETTE PER IL DATABASE INTERNET (CON HTTPS://)
+# FUNZIONI CORRETTE CON GLI INDIRIZZI COMPLETI DEL DATABASE
 def cerca_per_nome(nome):
     nome_en = traduci_in_inglese(nome)
     url = f"themealdb.com{nome_en}"
@@ -70,18 +70,19 @@ if piatto_scelto:
     
     porzioni = st.number_input("Per quante persone cucini?", min_value=1, max_value=12, value=2)
     
-    st.subheader("🛒 Ingredienti necessari (Nomi originali):")
+    st.subheader("🛒 Ingredienti necessari:")
     for i in range(1, 21):
         ingr = piatto_scelto.get(f"strIngredient{i}")
         misura = piatto_scelto.get(f"strMeasure{i}")
         if ingr and ingr.strip():
-            st.write(f"• **{ingr}**: {misura} (Moltiplicato per {porzioni} persone)")
+            st.write(f"• **{ingr}**: {misura} (per {porzioni} persone)")
             
-    st.subheader("👩‍🍳 Preparazione (Istruzioni):")
-    istruzioni = piatto_scelto["strInstructions"].split("\r\n")
-    for j, passaggio in enumerate(istruzioni, 1):
-        if passaggio.strip():
-            st.checkbox(f"{passaggio}", key=f"step_{j}_{piatto_scelto['idMeal']}")
+    st.subheader("👩‍🍳 Preparazione:")
+    if piatto_scelto.get("strInstructions"):
+        istruzioni = piatto_scelto["strInstructions"].split("\r\n")
+        for j, passaggio in enumerate(istruzioni, 1):
+            if passaggio.strip():
+                st.checkbox(f"{passaggio}", key=f"step_{j}_{piatto_scelto['idMeal']}")
             
     if piatto_scelto.get("strYoutube"):
         st.subheader("📺 Video Tutorial della ricetta:")
