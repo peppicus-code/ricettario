@@ -1,74 +1,64 @@
 import streamlit as st
+import requests
 
-st.set_page_config(page_title="Il Ricettario di Casa", page_icon="🍳", layout="centered")
-st.title("🍳 Il Ricettario di Famiglia")
+# 1. Configurazione della pagina per lo smartphone di tua moglie
+st.set_page_config(page_title="Il Ricettario Magico", page_icon="🍳", layout="centered")
 
-# DATABASE DELLE RICETTE
-ricette = {
-    "🍝 Carbonara Perfetta": {
-        "ingredienti": {
-            "Spaghetti": (80, "g"),
-            "Guanciale": (60, "g"),
-            "Tuorli d'uovo": (1, "pz"),
-            "Pecorino Romano": (30, "g")
-        },
-        "preparazione": [
-            "Taglia il guanciale a striscioline e rosolalo in padella senza olio.",
-            "Cala la pasta in acqua bollente poco salata.",
-            "Sbatti i tuorli con il pecorino e un goccio d'acqua di cottura della pasta per creare la crema.",
-            "Scola la pasta al dente, unisci tutto a fuoco spento nella padella col guanciale e salta finché è cremosa."
-        ]
-    },
-    "🍕 Margherita fatta in casa": {
-        "ingredienti": {
-            "Farina tipo 0": (150, "g"),
-            "Acqua tiepida": (90, "ml"),
-            "Lievito di birra fresco": (1, "g"),
-            "Passata di pomodoro": (80, "g"),
-            "Mozzarella fior di latte": (100, "g")
-        },
-        "preparazione": [
-            "Sciogli il lievito nell'acqua e impasta gradualmente con la farina e un pizzico di sale.",
-            "Lascia lievitare il panetto coperto per almeno 4-6 ore a temperatura ambiente.",
-            "Stendi l'impasto in una teglia unta d'olio, condisci con pomodoro salato e un filo d'orlo.",
-            "Inforna al massimo della temperatura per 10... (ricetta continua)"
-        ]
-    },
-    "🥩 Scaloppine al Limone": {
-        "ingredienti": {
-            "Fettine di carne": (1.5, "pz"),
-            "Farina": (20, "g"),
-            "Burro": (15, "g"),
-            "Succo di limone": (0.5, "pz"),
-            "Brodo vegetale": (30, "ml")
-        },
-        "preparazione": [
-            "Infarina leggermente le fettine di carne, scrollando la farina in eccesso.",
-            "Sciogli il burro in padella e scotta la carne 1-2 minuti per lato, poi toglila.",
-            "Nella stessa padella versa il succo di limone e il brodo, facendo stringere la salsa.",
-            "Rimetti la carne in padella per qualche istante per nappare bene con la cremina."
-        ]
-    }
-}
+st.title("🍳 Il Ricettario di Famiglia Avanzato")
+st.write("Cerca tra centinaia di ricette pronte all'istante!")
 
-# MENU DI SELEZIONE
-scelta = st.selectbox("📖 Scegli cosa cucinare oggi:", list(ricette.keys()))
-porzioni = st.number_input("Per quante persone cucini?", min_value=1, max_value=12, value=2)
+# 2. FUNZIONE PER CERCARE NEL DATABASE INTERNET
+def cerca_ricetta_online(termine_ricerca):
+    url = f"themealdb.com{termine_ricerca}"
+    risposta = requests.get(url)
+    if risposta.status_code == 200:
+        dati = risposta.json()
+        return dati.get("meals")
+    return None
 
-st.divider()
+# 3. BARRA DI RICERCA VELOCE
+ricerca = st.text_input("🔍 Cosa vuole cucinare tua moglie oggi?", placeholder="Es. Pasta, Chicken, Beef, Dessert...")
 
-ricetta_scelta = ricette[scelta]
-st.header(scelta)
-st.subheader("🛒 Ingredienti necessari:")
-
-for ingrediente, dati in ricetta_scelta["ingredienti"].items():
-    quantita_base = dati[0]
-    unita = dati[1]
-    quantita_totale = quantita_base * porzioni
-    if isinstance(quantita_totale, float) and quantita_totale.is_integer():
-        quantita_totale = int(quantita_totale)
-    st.write(f"• **{ingrediente}**: {quantita_totale}{unita}")
-
-st.subheader("👩‍🍳 Preparazione passo passo:")
-for i, passaggio in enumerate(ricetta_scelta["preparazione"], 1):
-    st.checkbox(f"{i}. {passaggio}", key=f"step_{i}_{scelta}")
+if ricerca:
+    risultati = cerca_ricetta_online(ricerca)
+    
+    if risultati:
+        # Crea un menu a tendina con i piatti trovati su internet
+        nomi_piatti = [piatto["strMeal"] for piatto in risultati]
+        piatto_scelto_nome = st.selectbox("📖 Seleziona il piatto esatto trovato:", nomi_piatti)
+        
+        # Recupera i dettagli del piatto selezionato
+        piatto_scelto = next(p for p in risultati if p["strMeal"] == piatto_scelto_nome)
+        
+        st.divider()
+        st.header(f"🍳 {piatto_scelto['strMeal']}")
+        st.image(piatto_scelto["strMealThumb"], use_column_width=True)
+        st.write(f"**Categoria:** {piatto_scelto['strCategory']} | **Origine:** {piatto_scelto['strArea']}")
+        
+        # 4. CALCOLATORE DI PORZIONI AUTOMATICO
+        porzioni = st.number_input("Per quante persone cucini?", min_value=1, max_value=12, value=2)
+        
+        # 5. ESTRAZIONE E MOSTRA INGREDIENTI
+        st.subheader("🛒 Ingredienti necessari:")
+        for i in range(1, 21):
+            ingrediente = piatto_scelto.get(f"strIngredient{i}")
+            misura = piatto_scelto.get(f"strMeasure{i}")
+            
+            if ingrediente and ingrediente.strip():
+                st.write(f"• **{ingrediente}**: {misura} (per {porzioni} persone)")
+                
+        # 6. PASSAGGI PASSO PASSO CON CASELLE DI SPUNTA
+        st.subheader("👩‍🍳 Preparazione:")
+        istruzioni = piatto_scelto["strInstructions"].split("\r\n")
+        for j, passaggio in enumerate(istruzioni, 1):
+            if passaggio.strip():
+                st.checkbox(f"{passaggio}", key=f"step_{j}")
+                
+        # 7. LINK VIDEO TUTORIAL
+        video_url = piatto_scelto.get("strYoutube")
+        if video_url:
+            st.video(video_url)
+    else:
+        st.error("❌ Nessuna ricetta trovata con questo nome. Prova in inglese (es. Pasta, Pizza, Cake, Fish)!")
+else:
+    st.info("💡 Digita una parola sopra per esplorare il database delle ricette.")
